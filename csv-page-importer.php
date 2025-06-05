@@ -2,13 +2,30 @@
 /**
  * Plugin Name: CSV Page Importer
  * Description: Automatically creates WordPress pages from a CSV file and organizes them under parent (e.g. state) and child (e.g. city) categories.
- * Version: 1.4
+ * Version: 2.0
  * Author: Brandon Baxley (Modified)
  */
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
+
+// Plugin constants
+define('CSV_IMPORTER_VERSION', '2.0');
+define('CSV_IMPORTER_PATH', plugin_dir_path(__FILE__));
+define('CSV_IMPORTER_URL', plugin_dir_url(__FILE__));
+
+// Enqueue styles and scripts
+function csv_importer_enqueue_scripts() {
+    if (is_page()) {
+        wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+        wp_enqueue_style('bootstrap', 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css');
+        wp_enqueue_style('business-listing', CSV_IMPORTER_URL . 'assets/css/business-listing.css', array(), CSV_IMPORTER_VERSION);
+        
+        wp_enqueue_script('bootstrap', 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js', array('jquery'), null, true);
+    }
+}
+add_action('wp_enqueue_scripts', 'csv_importer_enqueue_scripts');
 
 // Function to import pages from CSV
 function csv_import_pages($csv_file, $parent_category_id = null) {
@@ -34,38 +51,54 @@ function csv_import_pages($csv_file, $parent_category_id = null) {
         }
     }
 
-    // Store processed states and cities to prevent duplicate processing
+    // Store processed states and cities
     $processed_states = array();
     $processed_cities = array();
-    $state_pages = array(); // Track state pages
-    $city_pages = array(); // Track city pages
+    $state_pages = array();
+    $city_pages = array();
 
-    $header = fgetcsv($handle); // Read header row
+    $header = fgetcsv($handle);
     
-    // Find column indexes
-    $name_idx = array_search('name', $header);
-    $city_idx = array_search('city', $header);
-    $state_idx = array_search('state', $header);
-    $address_idx = array_search('formatted_address', $header);
-    $phone_idx = array_search('formatted_phone_number', $header);
-    $rating_idx = array_search('rating', $header);
-    $website_idx = array_search('website', $header);
+    // Find column indexes for all possible fields
+    $columns = array(
+        'name' => array_search('name', $header),
+        'city' => array_search('city', $header),
+        'state' => array_search('state', $header),
+        'address' => array_search('formatted_address', $header),
+        'phone' => array_search('formatted_phone_number', $header),
+        'rating' => array_search('rating', $header),
+        'website' => array_search('website', $header),
+        'email' => array_search('email', $header),
+        'description' => array_search('description', $header),
+        'latitude' => array_search('latitude', $header),
+        'longitude' => array_search('longitude', $header),
+        'hours' => array_search('business_hours', $header),
+        'photos' => array_search('photos', $header),
+        'social_media' => array_search('social_media', $header),
+        'amenities' => array_search('amenities', $header),
+        'categories' => array_search('categories', $header)
+    );
 
-    // Check if all required columns exist
-    if ($name_idx === false || $city_idx === false || $state_idx === false) {
+    // Check required columns
+    if ($columns['name'] === false || $columns['city'] === false || $columns['state'] === false) {
         echo "<p style='color: red;'>Required columns (name, city, state) not found in CSV.</p>";
         fclose($handle);
         return;
     }
 
     while (($data = fgetcsv($handle)) !== false) {
-        $business_name = sanitize_text_field($data[$name_idx]);
-        $city = sanitize_text_field($data[$city_idx]);
-        $state = sanitize_text_field($data[$state_idx]);
-        $address = isset($data[$address_idx]) ? sanitize_text_field($data[$address_idx]) : '';
-        $phone = isset($data[$phone_idx]) ? sanitize_text_field($data[$phone_idx]) : '';
-        $rating = isset($data[$rating_idx]) ? sanitize_text_field($data[$rating_idx]) : '';
-        $website = isset($data[$website_idx]) ? sanitize_text_field($data[$website_idx]) : '';
+        // Get basic information
+        $business_name = sanitize_text_field($data[$columns['name']]);
+        $city = sanitize_text_field($data[$columns['city']]);
+        $state = sanitize_text_field($data[$columns['state']]);
+        
+        // Get additional fields if they exist
+        $metadata = array();
+        foreach ($columns as $key => $index) {
+            if ($index !== false && isset($data[$index])) {
+                $metadata['_business_' . $key] = sanitize_text_field($data[$index]);
+            }
+        }
         
         $business_slug = sanitize_title($business_name);
         $state_slug = sanitize_title($state);
@@ -170,52 +203,114 @@ function csv_import_pages($csv_file, $parent_category_id = null) {
         $city_cat_id = $processed_cities[$city_state_key];
         $city_page_id = $city_pages[$city_state_key];
 
-        // Create business listing page
+        // Create business listing page with enhanced content
         $listing_path = $state_slug . '/' . $city_slug . '/' . $business_slug;
         $listing_page = get_page_by_path($listing_path, OBJECT, 'page');
         
         if (!$listing_page) {
             // Create content for the business listing
             $listing_content = '';
-            $listing_content .= "<h1>$business_name</h1>\n";
-            $listing_content .= "<p><strong>Address:</strong> $address</p>\n";
-            $listing_content .= "<p><strong>Phone:</strong> $phone</p>\n";
-            $listing_content .= "<p><strong>Rating:</strong> $rating</p>\n";
-            
-            if (!empty($website)) {
-                $listing_content .= "<p><strong>Website:</strong> <a href='$website' target='_blank'>Visit Website</a></p>\n";
-            } else {
-                $listing_content .= "<p><strong>Website:</strong> <a href='#'>Website</a></p>\n";
+            if (isset($metadata['_business_description'])) {
+                $listing_content .= $metadata['_business_description'];
             }
             
             $listing_page_id = wp_insert_post([
-                'post_title'   => $business_name,
+                'post_title' => $business_name,
                 'post_content' => $listing_content,
-                'post_status'  => 'publish',
-                'post_type'    => 'page',
-                'post_name'    => $business_slug,
-                'post_parent'  => $city_page_id, // Set city page as parent
-                'page_template' => 'listing-template.php',
+                'post_status' => 'publish',
+                'post_type' => 'page',
+                'post_name' => $business_slug,
+                'post_parent' => $city_page_id,
+                'page_template' => 'templates/listing-template.php'
             ]);
             
-            // Only assign the city category to the listing (modification for requirement #2)
+            // Save all metadata
+            foreach ($metadata as $meta_key => $meta_value) {
+                update_post_meta($listing_page_id, $meta_key, $meta_value);
+            }
+            
+            // Handle business hours if provided
+            if (isset($metadata['_business_hours'])) {
+                $hours = json_decode($metadata['_business_hours'], true);
+                if (is_array($hours)) {
+                    foreach ($hours as $day => $time) {
+                        update_post_meta($listing_page_id, '_business_hours_' . strtolower($day), $time);
+                    }
+                }
+            }
+            
+            // Handle photos if provided
+            if (isset($metadata['_business_photos'])) {
+                $photos = explode(',', $metadata['_business_photos']);
+                $gallery_ids = array();
+                
+                foreach ($photos as $photo_url) {
+                    $image_id = csv_importer_upload_image($photo_url, $listing_page_id);
+                    if ($image_id) {
+                        $gallery_ids[] = $image_id;
+                    }
+                }
+                
+                if (!empty($gallery_ids)) {
+                    update_post_meta($listing_page_id, '_business_gallery', implode(',', $gallery_ids));
+                    set_post_thumbnail($listing_page_id, $gallery_ids[0]); // Set first image as featured
+                }
+            }
+            
+            // Only assign the city category to the listing
             wp_set_object_terms($listing_page_id, array($city_cat_id), 'category');
             
-            // Add only business name/heading to city page content (modification for requirement #3)
+            // Add business to city page content
             $city_content = get_post_field('post_content', $city_page_id);
             $listing_permalink = get_permalink($listing_page_id);
+            $rating_stars = isset($metadata['_business_rating']) ? str_repeat('★', intval($metadata['_business_rating'])) : '';
             
-            $city_content .= "<h2><a href='" . $listing_permalink . "'>$business_name</a></h2>\n";
+            $city_content .= sprintf(
+                '<div class="business-card">
+                    <h2><a href="%s">%s</a></h2>
+                    <div class="rating">%s</div>
+                    <div class="address">%s</div>
+                </div>',
+                esc_url($listing_permalink),
+                esc_html($business_name),
+                esc_html($rating_stars),
+                isset($metadata['_business_address']) ? esc_html($metadata['_business_address']) : ''
+            );
             
             wp_update_post([
-                'ID'           => $city_page_id,
-                'post_content' => $city_content,
+                'ID' => $city_page_id,
+                'post_content' => $city_content
             ]);
         }
     }
     
     fclose($handle);
     echo "<p style='color: green;'>CSV Import Complete! Created pages organized by state and city.</p>";
+}
+
+// Helper function to upload images from URL
+function csv_importer_upload_image($image_url, $post_id) {
+    require_once(ABSPATH . 'wp-admin/includes/media.php');
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+    
+    $tmp = download_url($image_url);
+    if (is_wp_error($tmp)) {
+        return false;
+    }
+    
+    $file_array = array(
+        'name' => basename($image_url),
+        'tmp_name' => $tmp
+    );
+    
+    $id = media_handle_sideload($file_array, $post_id);
+    if (is_wp_error($id)) {
+        @unlink($file_array['tmp_name']);
+        return false;
+    }
+    
+    return $id;
 }
 
 // Admin menu for uploading and importing CSV
@@ -297,6 +392,22 @@ register_activation_hook(__FILE__, 'modify_permalinks_structure');
 
 // Add a simple function to flush rewrite rules on plugin activation
 function csv_importer_activate() {
+    // Create templates directory if it doesn't exist
+    $template_dir = get_template_directory() . '/templates/';
+    if (!file_exists($template_dir)) {
+        mkdir($template_dir, 0755, true);
+    }
+    
+    // Copy template files
+    copy(CSV_IMPORTER_PATH . 'templates/listing-template.php', $template_dir . 'listing-template.php');
+    
+    // Create assets directory and copy CSS
+    $assets_dir = CSV_IMPORTER_PATH . 'assets/css/';
+    if (!file_exists($assets_dir)) {
+        mkdir($assets_dir, 0755, true);
+    }
+    
+    // Flush rewrite rules
     flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 'csv_importer_activate');
