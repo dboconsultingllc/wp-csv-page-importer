@@ -411,3 +411,90 @@ function csv_importer_activate() {
     flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 'csv_importer_activate');
+
+// Add meta box for services
+function add_services_meta_box() {
+    add_meta_box(
+        'services_meta_box', // ID
+        'Business Services', // Title
+        'render_services_meta_box', // Callback function
+        'page', // Post type
+        'normal', // Context
+        'high' // Priority
+    );
+}
+add_action('add_meta_boxes', 'add_services_meta_box');
+
+// Render services meta box content
+function render_services_meta_box($post) {
+    // Add nonce for security
+    wp_nonce_field('services_meta_box_nonce', 'services_meta_box_nonce');
+
+    // Get existing services
+    $services = get_post_meta($post->ID, '_business_services', true);
+    $services_array = $services ? explode(',', $services) : array('');
+
+    echo '<div id="services_container">';
+    echo '<p><strong>Add or remove services offered by this business:</strong></p>';
+    
+    foreach ($services_array as $index => $service) {
+        echo '<div class="service-input-group" style="margin-bottom: 10px;">';
+        echo '<input type="text" name="business_services[]" value="' . esc_attr(trim($service)) . '" style="width: 80%;" />';
+        echo ' <button type="button" class="button remove-service" style="' . ($index === 0 ? 'display:none;' : '') . '">Remove</button>';
+        echo '</div>';
+    }
+    
+    echo '</div>';
+    echo '<button type="button" class="button add-service">Add Another Service</button>';
+
+    // Add JavaScript for dynamic service fields
+    ?>
+    <script>
+    jQuery(document).ready(function($) {
+        // Add new service field
+        $('.add-service').click(function() {
+            var newField = $('.service-input-group:first').clone();
+            newField.find('input').val('');
+            newField.find('.remove-service').show();
+            $('#services_container').append(newField);
+        });
+
+        // Remove service field
+        $('#services_container').on('click', '.remove-service', function() {
+            $(this).parent('.service-input-group').remove();
+        });
+    });
+    </script>
+    <?php
+}
+
+// Save services meta box data
+function save_services_meta_box($post_id) {
+    // Check if nonce is set
+    if (!isset($_POST['services_meta_box_nonce'])) {
+        return;
+    }
+
+    // Verify nonce
+    if (!wp_verify_nonce($_POST['services_meta_box_nonce'], 'services_meta_box_nonce')) {
+        return;
+    }
+
+    // If this is an autosave, don't do anything
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+        return;
+    }
+
+    // Check user permissions
+    if (!current_user_can('edit_post', $post_id)) {
+        return;
+    }
+
+    // Save services
+    if (isset($_POST['business_services'])) {
+        $services = array_filter($_POST['business_services'], 'trim'); // Remove empty values
+        $services_string = implode(',', array_map('sanitize_text_field', $services));
+        update_post_meta($post_id, '_business_services', $services_string);
+    }
+}
+add_action('save_post', 'save_services_meta_box');

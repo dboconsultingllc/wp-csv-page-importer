@@ -82,15 +82,22 @@ $longitude = get_post_meta(get_the_ID(), '_business_longitude', true);
                             <?php
                             $services = get_post_meta(get_the_ID(), '_business_services', true);
                             if ($services) {
-                                $services_array = explode(',', $services);
-                                foreach ($services_array as $service) {
-                                    echo '<div class="service-item">';
-                                    echo '<i class="fas fa-check-circle"></i>';
-                                    echo '<span>' . esc_html(trim($service)) . '</span>';
-                                    echo '</div>';
+                                $services_array = array_filter(array_map('trim', explode(',', $services)));
+                                if (!empty($services_array)) {
+                                    foreach ($services_array as $service) {
+                                        echo '<div class="service-item">';
+                                        echo '<i class="fas fa-check-circle"></i>';
+                                        echo '<span>' . esc_html($service) . '</span>';
+                                        echo '</div>';
+                                    }
+                                } else {
+                                    echo '<p class="no-services">No services listed yet.</p>';
                                 }
+                            } else {
+                                echo '<p class="no-services">No services listed yet.</p>';
                             }
                             ?>
+                        </div>
                     </section>
                 </div>
             </div>
