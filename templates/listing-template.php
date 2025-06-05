@@ -23,6 +23,7 @@ $longitude = get_post_meta(get_the_ID(), '_business_longitude', true);
             
             <?php if ($rating): ?>
             <div class="rating">
+                <span class="rating-label">Rating</span>
                 <span class="stars"><?php echo str_repeat('★', $rating); ?></span>
                 <span class="rating-value"><?php echo esc_html($rating); ?></span>
             </div>
@@ -75,9 +76,21 @@ $longitude = get_post_meta(get_the_ID(), '_business_longitude', true);
                     </section>
                     <?php endif; ?>
 
-                    <section class="reviews-section">
-                        <h2>Reviews</h2>
-                        <?php comments_template(); ?>
+                    <section class="services-section">
+                        <h2>Services</h2>
+                        <div class="services-grid">
+                            <?php
+                            $services = get_post_meta(get_the_ID(), '_business_services', true);
+                            if ($services) {
+                                $services_array = explode(',', $services);
+                                foreach ($services_array as $service) {
+                                    echo '<div class="service-item">';
+                                    echo '<i class="fas fa-check-circle"></i>';
+                                    echo '<span>' . esc_html(trim($service)) . '</span>';
+                                    echo '</div>';
+                                }
+                            }
+                            ?>
                     </section>
                 </div>
             </div>
@@ -114,20 +127,20 @@ $longitude = get_post_meta(get_the_ID(), '_business_longitude', true);
                         <?php endif; ?>
                     </div>
 
-                    <div class="business-hours">
-                        <h3>Business Hours</h3>
-                        <?php
-                        $days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
-                        foreach ($days as $day) {
-                            $hours = get_post_meta(get_the_ID(), '_business_hours_' . strtolower($day), true);
-                            if ($hours) {
-                                echo '<div class="hours-row">';
-                                echo '<span class="day">' . esc_html($day) . '</span>';
-                                echo '<span class="hours">' . esc_html($hours) . '</span>';
-                                echo '</div>';
-                            }
-                        }
-                        ?>
+                    <div class="get-a-quote">
+                        <h3>Get a Quote</h3>
+                        <form class="quote-form">
+                            <div class="form-group">
+                                <input type="text" name="name" placeholder="Your Name" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="email" name="email" placeholder="Your Email" required>
+                            </div>
+                            <div class="form-group">
+                                <textarea name="message" placeholder="Your Message" required></textarea>
+                            </div>
+                            <button type="submit" class="quote-submit">Send Request</button>
+                        </form>
                     </div>
                 </div>
             </div>

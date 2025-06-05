@@ -18,6 +18,15 @@
 
 .rating {
     margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.rating-label {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 5px;
 }
 
 .stars {
@@ -128,63 +137,82 @@
     text-decoration: underline;
 }
 
-/* Business Hours */
-.business-hours h3 {
+/* Get a Quote */
+.get-a-quote h3 {
     font-size: 1.2rem;
     margin-bottom: 15px;
     color: #333;
 }
 
-.hours-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    color: #666;
-}
-
-.day {
-    font-weight: 500;
-}
-
-/* Reviews Section */
-.reviews-section {
-    margin-top: 40px;
-}
-
-.comment-respond {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 4px;
-    margin-top: 20px;
-}
-
-.comment-form label {
-    display: block;
-    margin-bottom: 5px;
-    color: #666;
-}
-
-.comment-form input[type="text"],
-.comment-form input[type="email"],
-.comment-form textarea {
-    width: 100%;
-    padding: 8px;
+.quote-form .form-group {
     margin-bottom: 15px;
+}
+
+.quote-form input,
+.quote-form textarea {
+    width: 100%;
+    padding: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    font-size: 14px;
 }
 
-.comment-form input[type="submit"] {
+.quote-form textarea {
+    height: 100px;
+    resize: vertical;
+}
+
+.quote-submit {
+    width: 100%;
+    padding: 12px;
     background: #007bff;
     color: #fff;
     border: none;
-    padding: 10px 20px;
     border-radius: 4px;
+    font-size: 16px;
     cursor: pointer;
+    transition: background-color 0.3s ease;
 }
 
-.comment-form input[type="submit"]:hover {
+.quote-submit:hover {
     background: #0056b3;
+}
+
+/* Services Section */
+.services-section {
+    margin-top: 40px;
+}
+
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.service-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.service-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.service-item i {
+    color: #28a745;
+    font-size: 1.2rem;
+    margin-right: 10px;
+}
+
+.service-item span {
+    color: #333;
+    font-size: 1rem;
 }
 
 /* Responsive Design */
